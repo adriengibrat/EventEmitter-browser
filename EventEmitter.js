@@ -47,10 +47,23 @@ MyObject.prototype.myMethod = ...;
 
     /*** EventEmitter constructor ***/
 
+    /*
+     * EventEmitter
+     *
+     * @constructor
+     *
+     * @todo Allow configuration (emit newListener / removeListener)
+     */
     function EventEmitter () {
+        EventEmitter.init.call(this);
+    }
+
+    /*** Init in separate function allow patching and easyer debugging ***/
+
+    EventEmitter.init = function () {
         this.domain        = null;
         this._events       = this._events || {};
-        this._maxListeners = this._maxListeners || undefined;
+        this._maxListeners = this._maxListeners || undefined; // @todo Get rid of maxListeners feature?
     }
 
     /*** Backwards-compat with node 0.10.x ***/
@@ -60,28 +73,29 @@ MyObject.prototype.myMethod = ...;
     /*** Default EventEmitter properties ***/
 
     EventEmitter.usingDomains                 = false;
-    EventEmitter.defaultMaxListeners          = 10;
+    EventEmitter.defaultMaxListeners          = 10;           // @todo Get rid of maxListeners feature?
 
     /*** Declare EventEmitter prototype properties ***/
 
     EventEmitter.prototype.domain             = undefined;
     EventEmitter.prototype._events            = undefined;
-    EventEmitter.prototype._maxListeners      = undefined;
+    EventEmitter.prototype._maxListeners      = undefined;    // @todo Get rid of maxListeners feature?
 
     /*** Define EventEmitter prototype methods ***/
 
     /*
      * Add listener for given event type that will be fired every time
      *
-     * @param string   event    Event type
-     * @param function listener Listener function
+     * @param {String}   event    Event type
+     * @param {Function} listener Listener function
      *
-     * @throw TypeError if listener is not a function.
+     * @throw {TypeError} if listener is not a function.
      *
-     * @return EventEmitter For fluent interface
+     * @return {EventEmitter} Fluent interface
+     *
+     * @todo Get rid of this maxListeners warning?
      */
-    EventEmitter.prototype.addListener        =
-    EventEmitter.prototype.on                 = function (event, listener) {
+    EventEmitter.prototype.addListener        = function (event, listener) {
         if (typeof listener !== 'function') {
             throw TypeError('listener must be a function');
         }
@@ -102,12 +116,12 @@ MyObject.prototype.myMethod = ...;
     /*
      * Add listener for given event type that will be fired only once
      *
-     * @param string   event    Event type
-     * @param function listener Listener function
+     * @param {String}   event    Event type
+     * @param {Function} listener Listener function
      *
-     * @throw TypeError if listener is not a function.
+     * @throw {TypeError} If listener is not a function.
      *
-     * @return EventEmitter For fluent interface
+     * @return {EventEmitter} Fluent interface
      */
     EventEmitter.prototype.once               = function (event, listener) {
         if (typeof listener !== 'function') {
@@ -130,12 +144,12 @@ MyObject.prototype.myMethod = ...;
     /*
      * Remove specific listener for given event type
      *
-     * @param string   event    Event type
-     * @param function listener Listener function
+     * @param {String}   event    Event type
+     * @param {Function} listener Listener function
      *
-     * @throw TypeError if listener is not a function.
+     * @throw {TypeError} If listener is not a function.
      *
-     * @return EventEmitter For fluent interface
+     * @return {EventEmitter} Fluent interface
      */
     EventEmitter.prototype.removeListener     = function (event, listener) {
         if (typeof listener !== 'function') {
@@ -161,9 +175,9 @@ MyObject.prototype.myMethod = ...;
     /*
      * Remove all listeners [of given event type]
      *
-     * @param String event Optional, event type
+     * @param {String} event Optional, event type
      *
-     * @return EventEmitter For fluent interface
+     * @return {EventEmitter} Fluent interface
      */
     EventEmitter.prototype.removeAllListeners = function (event) {
         if (arguments.length === 0) {
@@ -192,9 +206,11 @@ MyObject.prototype.myMethod = ...;
     /*
      * Get all listeners of given event type
      *
-     * @param Integer n Maximum listeners before emitter display a warning about possible memory leak
+     * @param {Integer} n Maximum listeners before emitter display a warning about possible memory leak
      *
-     * @return EventEmitter For fluent interface
+     * @return {EventEmitter} Fluent interface
+     *
+     * @todo Get rid of maxListeners feature?
      */
     EventEmitter.prototype.setMaxListeners    = function (n) {
       if (!typeof n === 'number' || n < 0 || isNaN(n)) {
@@ -207,23 +223,26 @@ MyObject.prototype.myMethod = ...;
     /*
      * Get all listeners of given event type
      *
-     * @param String event Event type
+     * @param {String} event Event type
      *
-     * @return Array List of listeners functions
+     * @return {Array} List of listeners functions
      */
     EventEmitter.prototype.listeners          = function (event) {
-        return this._events[event] ? this._events[event].slice() : [];
+        return this._events[event] ?
+            Array.apply(this, this._events[event]) : // fast way to make array copy
+            []
+        ;
     };
 
     /*
      * Apply all listeners of given event type
      *
-     * @param String event  Event type
+     * @param {String} event  Event type
      * @param mixed  arg... Optional, argument(s) passed to event listener(s)
      *
-     * @return Boolean Does event type had listener(s)
+     * @return {Boolean} Was event emitted
      */
-    EventEmitter.prototype.emit               = function (event/*, [arg1], [arg2], [...]*/) {
+    EventEmitter.prototype.emit               = function (event, arg1, arg2, arg3, arg4/*[, arg5] ... */ ) {
         var listeners = this._events[event]
             , length  = listeners.length
             , index   = 0
@@ -235,15 +254,39 @@ MyObject.prototype.myMethod = ...;
             }
             return false;
         }
-        if (arguments.length > 1) {
-            var args = Array.prototype.slice.call(arguments, 1);
-            while (index < length) {
-                listeners[index++].apply(this, args);
-            }
-        } else {
-            while (index < length) {
-                listeners[index++].call(this);
-            }
+        switch (arguments.length) {
+            case 1:
+                while (index < length) {
+                    listeners[index++].call(this);
+                }
+            break;
+            case 2:
+                while (index < length) {
+                    listeners[index++].call(this, arg1);
+                }
+            break;
+            case 3:
+                while (index < length) {
+                    listeners[index++].call(this, arg1, arg2);
+                }
+            break;
+            case 4:
+                 while (index < length) {
+                    listeners[index++].call(this, arg1, arg2, arg3);
+                }
+            break;
+            case 5:
+                while (index < length) {
+                    listeners[index++].call(this, arg1, arg2, arg3, arg4);
+                }
+            break;
+            default:
+                for (var i = 1, len = arguments.length, args = new Array(len - 1); i < len; i++) {
+                    args[i - 1] = arguments[i];
+                }
+                while (index < length) {
+                    listeners[index++].apply(this, args);
+                }
         }
         return true;
     };
@@ -251,14 +294,24 @@ MyObject.prototype.myMethod = ...;
     /*
      * Count listeners of an event type in given emitter
      *
-     * @param EventEmitter emitter EventEmitter to check
-     * @param String       event   Event type
+     * @param {EventEmitter} emitter EventEmitter to check
+     * @param {String}       event   Event type
      *
-     * @return Integer Count of event type listener(s)
+     * @return {Integer} Count of event type listener(s)
+     *
+     * @todo Get rid of this helper?
      */
     EventEmitter.listenerCount                = function (emitter, event) {
+        if (typeof emitter.listeners !== 'function') {
+            throw TypeError('emitter must be compatible with EventEmitter interface');
+        }
         return emitter.listeners(event).length;
     };
+
+    /*** Alias EventEmitter prototype methods ***/
+
+    EventEmitter.prototype.on                 = EventEmitter.prototype.addListener;
+    EventEmitter.prototype.off                = EventEmitter.prototype.removeListener;
 
     /*** Expose EventEmitter object ***/
 
