@@ -1,0 +1,33 @@
+{
+  "name": "EventEmitter-browser",
+  "version": "0.0.1",
+  "description": "EventEmitter, node & browser compatible implementation",
+  "homepage": "https://github.com/adriengibrat/EventEmitter-browser/",
+  "contributors": [
+    "Adrien Gibrat <adrien.gibrat@gmail.com> (https://github.com/adriengibrat/)"
+  ],
+  "bugs": {
+    "mail": "adrien.gibrat@gmail.com",
+    "url": "https://github.com/adriengibrat/EventEmitter-browser/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/adriengibrat/EventEmitter-browser/raw/master/LICENSE"
+    }
+  ],
+  "main": "EventEmitter.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adriengibrat/EventEmitter-browser.git"
+  },
+  "scripts": {
+    "minify": "uglifyjs EventEmitter.js --comments --source-map=EventEmitter.map -b ascii_only=true,beautify=false > EventEmitter.min.js"
+  },
+  "devDependencies": {
+    "uglify-js": "~2.4.12"
+  },
+  "engines": {
+    "node": ">=0.4.0"
+  }
+}
