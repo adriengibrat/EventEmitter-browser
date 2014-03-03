@@ -1,5 +1,5 @@
 {
-  "name": "EventEmitter-browser",
+  "name": "eventemitter-browser",
   "version": "0.0.1",
   "description": "EventEmitter, node & browser compatible implementation",
   "homepage": "https://github.com/adriengibrat/EventEmitter-browser/",
