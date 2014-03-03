@@ -51,9 +51,6 @@ MyObject.prototype.myMethod = ...;
         this.domain        = null;
         this._events       = this._events || {};
         this._maxListeners = this._maxListeners || undefined;
-        this._listeners    = function (event) {
-            return this._events[event] || (this._events[event] = []);
-        };
     }
 
     /*** Backwards-compat with node 0.10.x ***/
@@ -89,7 +86,7 @@ MyObject.prototype.myMethod = ...;
             throw TypeError('listener must be a function');
         }
         this.emit('newListener', event, typeof listener.listener === 'function' ? listener.listener : listener);
-        var listeners = this._listeners(event)
+        var listeners = this._events[event] || (this._events[event] = [])
             , max     = this._maxListeners || EventEmitter.defaultMaxListeners
             , count   = listeners.push(listener)
         ;
@@ -144,17 +141,19 @@ MyObject.prototype.myMethod = ...;
         if (typeof listener !== 'function') {
             throw TypeError('listener must be a function');
         }
-        var listeners = this._listeners(event)
+        var listeners = this._events[event]
              , index  = listeners.length
         ;
-         // Search last index of listener in listeners
-        while (~--index // Decrease and stop if index is -1
-            && (!(index in listeners) || // Skip if index is not set (sparse array)
-            listener !== (listeners[index].listener || listeners[index])) // Stop when listener found
-        );
-        if (~index) {
-            listeners.splice(index, 1);
-            this.emit('removeListener', event, listener);
+        if (index) {
+             // Search last index of listener in listeners
+            while (~--index // Decrease and stop if index is -1
+                && (!(index in listeners) || // Skip if index is not set (sparse array)
+                listener !== (listeners[index].listener || listeners[index])) // Stop when listener found
+            );
+            if (~index) {
+                listeners.splice(index, 1);
+                this.emit('removeListener', event, listener);
+            }
         }
         return this;
     };
@@ -167,25 +166,25 @@ MyObject.prototype.myMethod = ...;
      * @return EventEmitter For fluent interface
      */
     EventEmitter.prototype.removeAllListeners = function (event) {
-        if (this._listeners('removeListener').length) { // Listening for removeListener, need to emit
-            if (arguments.length === 0) {
+        if (arguments.length === 0) {
+            if (this._events.removeListener) { // Listening for removeListener, need to emit
                 // All but removeListener
                 for (var key in this._events) {
-                    if (key === 'removeListener')
-                        continue;
-                    this.removeAllListeners(key);
+                    if (key !== 'removeListener') {
+                        this.removeAllListeners(key);
+                    }
                 }
                 // Finally remove removeListener
                 this.removeAllListeners('removeListener');
-                this._events = {};
-            } else {
-                var listeners = this._listeners(event);
-                // LIFO order
-                while (listeners.length) {
-                    this.removeListener(event, listeners[listeners.length - 1]);
-                }
-                delete this._events[event];
             }
+            this._events = {};
+        } else {
+            var listeners = this._events[event];
+            // LIFO order
+            while (listeners.length) {
+                this.removeListener(event, listeners[listeners.length - 1]);
+            }
+            delete this._events[event];
         }
         return this;
     };
@@ -213,7 +212,7 @@ MyObject.prototype.myMethod = ...;
      * @return Array List of listeners functions
      */
     EventEmitter.prototype.listeners          = function (event) {
-        return this._listeners(event).slice();
+        return this._events[event] ? this._events[event].slice() : [];
     };
 
     /*
@@ -225,7 +224,7 @@ MyObject.prototype.myMethod = ...;
      * @return Boolean Does event type had listener(s)
      */
     EventEmitter.prototype.emit               = function (event/*, [arg1], [arg2], [...]*/) {
-        var listeners = this._listeners(event)
+        var listeners = this._events[event]
             , length  = listeners.length
             , index   = 0
         ;
