@@ -101,7 +101,7 @@ MyObject.prototype.myMethod = ...;
         }
         this.emit('newListener', event, typeof listener.listener === 'function' ? listener.listener : listener);
         var listeners = this._events[event] || (this._events[event] = [])
-            , max     = this._maxListeners || EventEmitter.defaultMaxListeners
+            , max     = this._maxListeners !== undefined ? this._maxListeners : EventEmitter.defaultMaxListeners
             , count   = listeners.push(listener)
         ;
         if (max > 0 && !listeners.warned && count > max) {
@@ -156,7 +156,7 @@ MyObject.prototype.myMethod = ...;
             throw TypeError('listener must be a function');
         }
         var listeners = this._events[event]
-             , index  = listeners.length
+             , index  = listeners && listeners.length
         ;
         if (index) {
              // Search last index of listener in listeners
@@ -194,11 +194,13 @@ MyObject.prototype.myMethod = ...;
             this._events = {};
         } else {
             var listeners = this._events[event];
-            // LIFO order
-            while (listeners.length) {
-                this.removeListener(event, listeners[listeners.length - 1]);
+            if (listeners) {
+                // LIFO order
+                while (listeners.length) {
+                    this.removeListener(event, listeners[listeners.length - 1]);
+                }
+                delete this._events[event];
             }
-            delete this._events[event];
         }
         return this;
     };
@@ -244,40 +246,49 @@ MyObject.prototype.myMethod = ...;
      */
     EventEmitter.prototype.emit               = function (event, arg1, arg2, arg3, arg4/*[, arg5] ... */ ) {
         var listeners = this._events[event]
-            , length  = listeners.length
+            , length  = listeners && listeners.length
             , index   = 0
         ;
         if (!length) {
             if (event === 'error') {
-                var error = arguments[1];
-                throw error instanceof Error ? error : Error('Uncaught, unspecified "error" event.');
+                var error = arg1;
+                if (this.domain) {
+                    if (!error)
+                        error = new Error('Uncaught, unspecified "error" event.');
+                    error.domainEmitter = this;
+                    error.domain        = this.domain;
+                    error.domainThrown  = false;
+                    this.domain.emit('error', error);
+                } else {
+                    throw error;
+                }
             }
             return false;
         }
         switch (arguments.length) {
             case 1:
                 while (index < length) {
-                    listeners[index++].call(this);
+                    listeners[index] && listeners[index++].call(this);
                 }
             break;
             case 2:
                 while (index < length) {
-                    listeners[index++].call(this, arg1);
+                    listeners[index] && listeners[index++].call(this, arg1);
                 }
             break;
             case 3:
                 while (index < length) {
-                    listeners[index++].call(this, arg1, arg2);
+                    listeners[index] && listeners[index++].call(this, arg1, arg2);
                 }
             break;
             case 4:
                  while (index < length) {
-                    listeners[index++].call(this, arg1, arg2, arg3);
+                    listeners[index] && listeners[index++].call(this, arg1, arg2, arg3);
                 }
             break;
             case 5:
                 while (index < length) {
-                    listeners[index++].call(this, arg1, arg2, arg3, arg4);
+                    listeners[index] && listeners[index++].call(this, arg1, arg2, arg3, arg4);
                 }
             break;
             default:
@@ -285,7 +296,7 @@ MyObject.prototype.myMethod = ...;
                     args[i - 1] = arguments[i];
                 }
                 while (index < length) {
-                    listeners[index++].apply(this, args);
+                    listeners[index] && listeners[index++].apply(this, args);
                 }
         }
         return true;
