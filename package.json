@@ -22,10 +22,10 @@
     "url": "https://github.com/adriengibrat/EventEmitter-browser.git"
   },
   "scripts": {
-    "minify": "uglifyjs EventEmitter.js --comments --source-map=EventEmitter.map -b ascii_only=true,beautify=false > EventEmitter.min.js"
+    "minify": "uglifyjs EventEmitter.js --comments --source-map filename=EventEmitter.map -b ascii_only=true,beautify=false --output EventEmitter.min.js"
   },
   "devDependencies": {
-    "uglify-js": "~2.4.12"
+    "uglify-js": "^3.6.0"
   },
   "engines": {
     "node": ">=0.4.0"
